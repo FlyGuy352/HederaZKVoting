@@ -1,5 +1,8 @@
 {
+  "type": "module",
   "dependencies": {
-    "circomlib": "^2.0.5"
+    "@hashgraph/sdk": "^2.76.0",
+    "circomlib": "^2.0.5",
+    "dotenv": "^17.2.3"
   }
 }

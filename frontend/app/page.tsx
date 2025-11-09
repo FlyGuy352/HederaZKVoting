@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AccountId } from "@hashgraph/sdk";
+import { AccountId, TopicMessageSubmitTransaction } from "@hashgraph/sdk";
 
 export default function Home() {
 
@@ -53,12 +53,26 @@ export default function Home() {
     await hc.disconnect();
   };
 
+  const vote = async () => {
+    const { getHashConnectInstance } = await import("@/lib/hashconnect"); 
+    const hc = getHashConnectInstance();
+    const result = await hc.sendTransaction(
+      AccountId.fromString(accountId!), new TopicMessageSubmitTransaction()
+      .setTopicId(process.env.NEXT_PUBLIC_ZK_VOTES_TOPIC_ID!).setMessage("Hello")
+    );
+    if (result.status._code === 22) {
+      alert("Success!");
+    }
+  };
+
   return (
     <div>
       {!accountId && <button onClick={connect}>Connect</button>}
       {accountId && <button onClick={disconnect}>Disconnect</button>}
 
       Account Id is {accountId}
+
+      {accountId && <button onClick={vote}>Vote</button>}
     </div>
   );
 }
