@@ -2,7 +2,7 @@
 set -e
 
 # Paths
-FRONTEND_PROOFS_DIR="../../frontend/lib/proofs"
+FRONTEND_PROOFS_DIR="../../frontend/public/proofs"
 CIRCUITS_DIR="../circuits"
 PTAU_FILE="$FRONTEND_PROOFS_DIR/powersOfTau28_hez_final_16.ptau"
 
