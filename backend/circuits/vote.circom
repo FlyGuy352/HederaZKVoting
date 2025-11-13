@@ -83,4 +83,4 @@ template VoteCircuit(depth, nOptions) {
 }
 
 // instantiate main
-component main = VoteCircuit(20, 3); // depth=20, 3 vote options
+component main = VoteCircuit(3, 3); // depth=3, 3 vote options

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TopicMessageSubmitTransaction } from "@hashgraph/sdk";
+import { AccountId, TopicMessageSubmitTransaction } from "@hashgraph/sdk";
 import * as snarkjs from "snarkjs";
 import { getMerkleProof } from "@/actions/actions";
 
@@ -57,7 +57,7 @@ export default function Home() {
       setStatus("🧮 Generating ZK proof...");
 
       const input = {
-        secret: merkleProof.leaf,
+        secret: merkleProof.secret,
         publicKey: merkleProof.publicKeyNumber.toString(), // numeric for Circom
         root: merkleProof.root,
         pathElements: merkleProof.pathElements,
@@ -75,15 +75,12 @@ export default function Home() {
         "/proofs/vote_js/vote.wasm",
         "/proofs/vote_final.zkey"
       );
-
       const message = {
-        type: "zkVote",
         pollId: input.pollId,
         choiceHash: publicSignals[2],
         nullifier: publicSignals[0],
-        rootOut: publicSignals[1],
         proof,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       };
 
       setProofResult(message);
@@ -96,16 +93,16 @@ export default function Home() {
         .setMessage(JSON.stringify(message));
 
       // ✅ HashConnect automatically uses connected wallet
-      const result = await hc.sendTransaction(tx);
+      const result = await hc.sendTransaction(AccountId.fromString(accountId), tx);
 
       setStatus(
         result.status._code === 22
           ? "✅ Vote submitted successfully!"
           : `⚠️ Transaction status: ${result.status.toString()}`
       );
-    } catch (err) {
-      console.error(err);
-      setStatus("❌ Vote failed: " + (err as Error).message);
+    } catch (error) {
+      console.error(error);
+      setStatus(`❌ Vote failed: ${(error as Error).message}`);
     } finally {
       setIsProving(false);
     }
