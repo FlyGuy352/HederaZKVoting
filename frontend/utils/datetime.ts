@@ -10,7 +10,7 @@ export function formatIsoToLocalString(isoStr: string): string {
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
-    timeZone: userTimeZone,
+    timeZone: userTimeZone
   };
 
   const formatted = new Intl.DateTimeFormat(undefined, options).format(date);

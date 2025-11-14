@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { AccountId, TopicMessageSubmitTransaction } from "@hashgraph/sdk";
 import * as snarkjs from "snarkjs";
 import { getMerkleProof } from "@/actions/actions";
+import useVoteCounts from "@/hooks/useVoteCounts";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Home() {
   const [accountId, setAccountId] = useState<string | null>(null);
@@ -11,36 +13,75 @@ export default function Home() {
   const [isProving, setIsProving] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [proofResult, setProofResult] = useState<any>(null);
+  const { data: voteCounts } = useVoteCounts();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const initHashConnect = async () => {
-      const { getHashConnectInstance } = await import("@/lib/hashconnect");
+      const { getHashConnectInstance } = await import("@/lib/hashConnect");
       const hc = getHashConnectInstance();
       await hc.init();
 
       hc.pairingEvent.on(() => {
-        if (hc.connectedAccountIds?.length > 0)
+        if (hc.connectedAccountIds?.length > 0) {
           setAccountId(hc.connectedAccountIds[0].toString());
+        }
       });
 
       hc.disconnectionEvent.on(() => setAccountId(null));
 
-      if (hc.connectedAccountIds?.length > 0)
+      if (hc.connectedAccountIds?.length > 0) {
         setAccountId(hc.connectedAccountIds[0].toString());
+      }
     };
+
     initHashConnect();
   }, []);
 
   const connect = async () => {
-    const { getHashConnectInstance } = await import("@/lib/hashconnect");
+    const { getHashConnectInstance } = await import("@/lib/hashConnect");
     const hc = getHashConnectInstance();
     await hc.openPairingModal();
   };
 
   const disconnect = async () => {
-    const { getHashConnectInstance } = await import("@/lib/hashconnect");
+    const { getHashConnectInstance } = await import("@/lib/hashConnect");
     const hc = getHashConnectInstance();
     await hc.disconnect();
+  };
+
+  const register = async () => {
+    if (!accountId) return alert("Connect wallet first");
+
+    try {
+      setStatus("📥 Registering as voter...");
+
+      const { getHashConnectInstance } = await import("@/lib/hashConnect");
+      const hc = getHashConnectInstance();
+
+      const message = JSON.stringify({
+        accountId,
+        timestamp: new Date().toISOString()
+      });
+
+      const tx = new TopicMessageSubmitTransaction()
+        .setTopicId(process.env.NEXT_PUBLIC_VOTERS_REGISTRY_TOPIC_ID!)
+        .setMessage(message);
+
+      const result = await hc.sendTransaction(
+        AccountId.fromString(accountId),
+        tx
+      );
+
+      if (result.status._code === 22) {
+        setStatus("✅ Registered as voter!");
+      } else {
+        setStatus(`⚠️ Status: ${result.status.toString()}`);
+      }
+    } catch (error) {
+      console.error(error);
+      setStatus(`❌ Registration failed: ${(error as Error).message}`);
+    }
   };
 
   const submitVote = async () => {
@@ -52,22 +93,22 @@ export default function Home() {
       setStatus("🧮 Fetching Merkle proof...");
 
       const merkleProof = await getMerkleProof(accountId);
-      if (!merkleProof) throw new Error("Voter not eligible");
+      if (!merkleProof) throw new Error("You are not registered as a voter");
 
       setStatus("🧮 Generating ZK proof...");
 
       const input = {
         secret: merkleProof.secret,
-        publicKey: merkleProof.publicKeyNumber.toString(), // numeric for Circom
+        publicKey: merkleProof.publicKeyNumber.toString(),
         root: merkleProof.root,
         pathElements: merkleProof.pathElements,
         pathIndices: merkleProof.pathIndices,
         choice: [
           voteChoice === 0 ? 1 : 0,
           voteChoice === 1 ? 1 : 0,
-          voteChoice === 2 ? 1 : 0,
+          voteChoice === 2 ? 1 : 0
         ],
-        pollId: "1",
+        pollId: "1"
       };
 
       const { proof, publicSignals } = await snarkjs.groth16.fullProve(
@@ -75,30 +116,54 @@ export default function Home() {
         "/proofs/vote_js/vote.wasm",
         "/proofs/vote_final.zkey"
       );
+
       const message = {
         pollId: input.pollId,
         choiceHash: publicSignals[2],
+        choice: voteChoice,
         nullifier: publicSignals[0],
         proof,
         timestamp: new Date().toISOString()
       };
 
       setProofResult(message);
-      setStatus("📤 Submitting to Hedera...");
+      setStatus("📤 Submitting vote to Hedera...");
 
-      const { getHashConnectInstance } = await import("@/lib/hashconnect");
+      const { getHashConnectInstance } = await import("@/lib/hashConnect");
       const hc = getHashConnectInstance();
+
       const tx = new TopicMessageSubmitTransaction()
-        .setTopicId(process.env.NEXT_PUBLIC_ZK_VOTES_TOPIC_ID!)
+        .setTopicId(process.env.NEXT_PUBLIC_VOTE_SUBMISSIONS_TOPIC_ID!)
         .setMessage(JSON.stringify(message));
 
-      // ✅ HashConnect automatically uses connected wallet
-      const result = await hc.sendTransaction(AccountId.fromString(accountId), tx);
+      const result = await hc.sendTransaction(
+        AccountId.fromString(accountId),
+        tx
+      );
 
+      queryClient.setQueryData<{ yes: number; no: number; abstain: number }>(
+        ["voteCounts"],
+        old => {
+          if (!old) return { yes: 0, no: 0, abstain: 0 };
+          const newCounts = { ...old };
+          switch (voteChoice) {
+            case 0:
+              newCounts.yes++;
+              break;
+            case 1:
+              newCounts.no++;
+              break;
+            case 2:
+              newCounts.abstain++;
+              break;
+          }
+          return newCounts;
+        }
+      );
       setStatus(
         result.status._code === 22
-          ? "✅ Vote submitted successfully!"
-          : `⚠️ Transaction status: ${result.status.toString()}`
+          ? "✅ Vote submitted!"
+          : `⚠️ Status: ${result.status.toString()}`
       );
     } catch (error) {
       console.error(error);
@@ -121,39 +186,48 @@ export default function Home() {
             Connect Wallet
           </button>
         ) : (
-          <button
-            onClick={disconnect}
-            className="w-full bg-red-600 py-3 rounded-xl mb-4 hover:bg-red-500 transition"
-          >
-            Disconnect ({accountId})
-          </button>
+          <>
+            <button
+              onClick={disconnect}
+              className="w-full bg-red-600 py-3 rounded-xl mb-4 hover:bg-red-500 transition"
+            >
+              Disconnect ({accountId})
+            </button>
+
+            <button
+              onClick={register}
+              className="w-full bg-purple-600 py-3 rounded-xl mb-4 hover:bg-purple-500 transition"
+            >
+              Register As Voter
+            </button>
+          </>
         )}
 
         {accountId && (
           <>
             <h2 className="text-xl font-semibold mb-3">Cast Your Vote</h2>
+
             <div className="flex gap-3 mb-4">
               <button
                 onClick={() => setVoteChoice(0)}
-                className={`flex-1 py-3 rounded-xl ${
-                  voteChoice === 0 ? "bg-blue-600" : "bg-gray-700 hover:bg-gray-600"
-                }`}
+                className={`flex-1 py-3 rounded-xl ${voteChoice === 0 ? "bg-blue-600" : "bg-gray-700 hover:bg-gray-600"
+                  }`}
               >
                 YES ✅
               </button>
+
               <button
                 onClick={() => setVoteChoice(1)}
-                className={`flex-1 py-3 rounded-xl ${
-                  voteChoice === 1 ? "bg-red-600" : "bg-gray-700 hover:bg-gray-600"
-                }`}
+                className={`flex-1 py-3 rounded-xl ${voteChoice === 1 ? "bg-red-600" : "bg-gray-700 hover:bg-gray-600"
+                  }`}
               >
                 NO ❌
               </button>
+
               <button
                 onClick={() => setVoteChoice(2)}
-                className={`flex-1 py-3 rounded-xl ${
-                  voteChoice === 2 ? "bg-yellow-600" : "bg-gray-700 hover:bg-gray-600"
-                }`}
+                className={`flex-1 py-3 rounded-xl ${voteChoice === 2 ? "bg-yellow-600" : "bg-gray-700 hover:bg-gray-600"
+                  }`}
               >
                 ABSTAIN ⚪
               </button>
@@ -166,6 +240,26 @@ export default function Home() {
             >
               {isProving ? "Generating Proof..." : "Submit Vote"}
             </button>
+
+            {voteCounts && (
+              <div className="mt-12 p-4 bg-gray-700 rounded-2xl shadow-inner text-center">
+                <h3 className="text-lg font-semibold mb-3">📊 Current Votes</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-blue-600 rounded-xl p-3 flex flex-col items-center justify-center">
+                    <span className="text-white font-bold text-xl">{voteCounts.yes}</span>
+                    <span className="text-white text-sm">YES ✅</span>
+                  </div>
+                  <div className="bg-red-600 rounded-xl p-3 flex flex-col items-center justify-center">
+                    <span className="text-white font-bold text-xl">{voteCounts.no}</span>
+                    <span className="text-white text-sm">NO ❌</span>
+                  </div>
+                  <div className="bg-yellow-500 rounded-xl p-3 flex flex-col items-center justify-center">
+                    <span className="text-white font-bold text-xl">{voteCounts.abstain}</span>
+                    <span className="text-white text-sm">ABSTAIN ⚪</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {status && <p className="mt-4 text-center text-gray-300">{status}</p>}
 
