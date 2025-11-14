@@ -7,10 +7,10 @@ import { fetchTopicMessages } from "@/lib/readTopic";
 
 const SALT = "super-secret-server-salt";
 
-const deriveSecret = accountId =>
+const deriveSecret = (accountId: string) =>
   crypto.createHash("sha256").update(`${accountId}${SALT}`).digest("hex");
 
-const accountIdToNumber = accountId => BigInt(accountId.split(".")[2]);
+const accountIdToNumber = (accountId: string) => BigInt(accountId.split(".")[2]);
 
 const buildPoseidonTree = (leaves, hashFn) => {
   const layers = [leaves];

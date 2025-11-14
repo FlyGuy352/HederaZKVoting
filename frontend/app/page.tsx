@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AccountId, TopicMessageSubmitTransaction } from "@hashgraph/sdk";
-import * as snarkjs from "snarkjs";
+import { groth16 } from "snarkjs";
 import { getMerkleProof } from "@/actions/actions";
 import useVoteCounts from "@/hooks/useVoteCounts";
 import { useQueryClient } from "@tanstack/react-query";
+import VoteTally from "./voteTally";
+import { submitMessageTransaction } from "@/lib/hashConnect";
 
 export default function Home() {
   const [accountId, setAccountId] = useState<string | null>(null);
@@ -56,21 +57,12 @@ export default function Home() {
     try {
       setStatus("📥 Registering as voter...");
 
-      const { getHashConnectInstance } = await import("@/lib/hashConnect");
-      const hc = getHashConnectInstance();
-
       const message = JSON.stringify({
         accountId,
         timestamp: new Date().toISOString()
       });
-
-      const tx = new TopicMessageSubmitTransaction()
-        .setTopicId(process.env.NEXT_PUBLIC_VOTERS_REGISTRY_TOPIC_ID!)
-        .setMessage(message);
-
-      const result = await hc.sendTransaction(
-        AccountId.fromString(accountId),
-        tx
+      const result = await submitMessageTransaction(
+        accountId, process.env.NEXT_PUBLIC_VOTERS_REGISTRY_TOPIC_ID!, message
       );
 
       if (result.status._code === 22) {
@@ -97,21 +89,9 @@ export default function Home() {
 
       setStatus("🧮 Generating ZK proof...");
 
-      const input = {
-        secret: merkleProof.secret,
-        publicKey: merkleProof.publicKeyNumber.toString(),
-        root: merkleProof.root,
-        pathElements: merkleProof.pathElements,
-        pathIndices: merkleProof.pathIndices,
-        choice: [
-          voteChoice === 0 ? 1 : 0,
-          voteChoice === 1 ? 1 : 0,
-          voteChoice === 2 ? 1 : 0
-        ],
-        pollId: "1"
-      };
+      const input = buildCircuitInput(merkleProof, voteChoice);
 
-      const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+      const { proof, publicSignals } = await groth16.fullProve(
         input,
         "/proofs/vote_js/vote.wasm",
         "/proofs/vote_final.zkey"
@@ -129,48 +109,59 @@ export default function Home() {
       setProofResult(message);
       setStatus("📤 Submitting vote to Hedera...");
 
-      const { getHashConnectInstance } = await import("@/lib/hashConnect");
-      const hc = getHashConnectInstance();
-
-      const tx = new TopicMessageSubmitTransaction()
-        .setTopicId(process.env.NEXT_PUBLIC_VOTE_SUBMISSIONS_TOPIC_ID!)
-        .setMessage(JSON.stringify(message));
-
-      const result = await hc.sendTransaction(
-        AccountId.fromString(accountId),
-        tx
+      const result = await submitMessageTransaction(
+        accountId, process.env.NEXT_PUBLIC_VOTE_SUBMISSIONS_TOPIC_ID!, JSON.stringify(message)
       );
-
-      queryClient.setQueryData<{ yes: number; no: number; abstain: number }>(
-        ["voteCounts"],
-        old => {
-          if (!old) return { yes: 0, no: 0, abstain: 0 };
-          const newCounts = { ...old };
-          switch (voteChoice) {
-            case 0:
-              newCounts.yes++;
-              break;
-            case 1:
-              newCounts.no++;
-              break;
-            case 2:
-              newCounts.abstain++;
-              break;
-          }
-          return newCounts;
-        }
-      );
-      setStatus(
-        result.status._code === 22
-          ? "✅ Vote submitted!"
-          : `⚠️ Status: ${result.status.toString()}`
-      );
+      if (result.status._code === 22) {
+        updateQueryCache();
+        setStatus("✅ Vote submitted!");
+      } else {
+        setStatus(`⚠️ Status: ${result.status.toString()}`);
+      }
     } catch (error) {
       console.error(error);
       setStatus(`❌ Vote failed: ${(error as Error).message}`);
     } finally {
       setIsProving(false);
     }
+  };
+
+  const buildCircuitInput = (merkleProof, voteChoice) => {
+    return {
+      secret: merkleProof.secret,
+      publicKey: merkleProof.publicKeyNumber.toString(),
+      root: merkleProof.root,
+      pathElements: merkleProof.pathElements,
+      pathIndices: merkleProof.pathIndices,
+      choice: [
+        voteChoice === 0 ? 1 : 0,
+        voteChoice === 1 ? 1 : 0,
+        voteChoice === 2 ? 1 : 0
+      ],
+      pollId: "1"
+    };
+  };
+
+  const updateQueryCache = () => {
+    queryClient.setQueryData<{ yes: number; no: number; abstain: number }>(
+      ["voteCounts"],
+      old => {
+        if (!old) return { yes: 0, no: 0, abstain: 0 };
+        const newCounts = { ...old };
+        switch (voteChoice) {
+          case 0:
+            newCounts.yes++;
+            break;
+          case 1:
+            newCounts.no++;
+            break;
+          case 2:
+            newCounts.abstain++;
+            break;
+        }
+        return newCounts;
+      }
+    );
   };
 
   return (
@@ -241,25 +232,7 @@ export default function Home() {
               {isProving ? "Generating Proof..." : "Submit Vote"}
             </button>
 
-            {voteCounts && (
-              <div className="mt-12 p-4 bg-gray-700 rounded-2xl shadow-inner text-center">
-                <h3 className="text-lg font-semibold mb-3">📊 Current Votes</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-blue-600 rounded-xl p-3 flex flex-col items-center justify-center">
-                    <span className="text-white font-bold text-xl">{voteCounts.yes}</span>
-                    <span className="text-white text-sm">YES ✅</span>
-                  </div>
-                  <div className="bg-red-600 rounded-xl p-3 flex flex-col items-center justify-center">
-                    <span className="text-white font-bold text-xl">{voteCounts.no}</span>
-                    <span className="text-white text-sm">NO ❌</span>
-                  </div>
-                  <div className="bg-yellow-500 rounded-xl p-3 flex flex-col items-center justify-center">
-                    <span className="text-white font-bold text-xl">{voteCounts.abstain}</span>
-                    <span className="text-white text-sm">ABSTAIN ⚪</span>
-                  </div>
-                </div>
-              </div>
-            )}
+            {voteCounts && <VoteTally voteCounts={voteCounts} />}
 
             {status && <p className="mt-4 text-center text-gray-300">{status}</p>}
 

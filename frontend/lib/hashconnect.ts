@@ -1,5 +1,5 @@
 import { HashConnect } from "hashconnect";
-import { LedgerId } from "@hashgraph/sdk";
+import { LedgerId, AccountId, TopicMessageSubmitTransaction } from "@hashgraph/sdk";
 
 const hc = new HashConnect(
     LedgerId.fromString("testnet"),
@@ -18,4 +18,18 @@ export const getHashConnectInstance = (): HashConnect => {
         throw new Error("HashConnect not initialized. Make sure this is called on the client side.");
     }
     return hc;
+};
+
+export const submitMessageTransaction = async (accountId: string, topicId: string, message: string) => {
+    const hc = getHashConnectInstance();
+
+    const tx = new TopicMessageSubmitTransaction()
+      .setTopicId(process.env.NEXT_PUBLIC_VOTE_SUBMISSIONS_TOPIC_ID!)
+      .setMessage(JSON.stringify(message));
+
+    const result = await hc.sendTransaction(
+      AccountId.fromString(accountId),
+      tx
+    );
+    return result;
 };
