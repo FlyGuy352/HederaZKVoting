@@ -1,20 +1,17 @@
+import { HashConnect } from "hashconnect";
 import { LedgerId, AccountId, TopicMessageSubmitTransaction } from "@hashgraph/sdk";
 
-let hc; // Statically importing HashConnect causes a build error
-if (typeof window !== "undefined") {
-    const { HashConnect } = await import("hashconnect");
-    hc = new HashConnect(
-        LedgerId.fromString("testnet"),
-        process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID!,
-        {
-            name: "ZK Voting",
-            description: "ZK Voting - Hedera Hashgraph DApp",
-            icons: [`${window.location.origin}/favicon.ico`],
-            url: "http://localhost:3000",
-        },
-        true
-    );
-}
+const hc = new HashConnect(
+    LedgerId.fromString("testnet"),
+    process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID!,
+    {
+        name: "ZK Voting",
+        description: "ZK Voting - Hedera Hashgraph DApp",
+        icons: [`${window.location.origin}/favicon.ico`],
+        url: "http://localhost:3000",
+    },
+    true
+);
 
 export const getHashConnectInstance = (): HashConnect => {
     if (!hc) {
