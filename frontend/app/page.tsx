@@ -1,56 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useWallet, useAccountId } from "@buidlerlabs/hashgraph-react-wallets";
+import { TopicMessageSubmitTransaction } from "@hashgraph/sdk";
 import { groth16 } from "snarkjs";
 import { getMerkleProof } from "@/actions/actions";
 import useVoteCounts from "@/hooks/useVoteCounts";
 import { useQueryClient } from "@tanstack/react-query";
 import VoteTally from "./voteTally";
-import { submitMessageTransaction } from "@/lib/hashConnect";
 import { MerkleProof } from "@/types/types";
+import { HashpackConnector } from "@buidlerlabs/hashgraph-react-wallets/connectors";
 
 export default function Home() {
-  const [accountId, setAccountId] = useState<string | null>(null);
+  const { signer, connect, disconnect, isConnected } = useWallet(HashpackConnector);
+  const { data: accountId } = useAccountId();
   const [voteChoice, setVoteChoice] = useState<number | null>(null);
   const [isProving, setIsProving] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [proofResult, setProofResult] = useState<any>(null);
   const { data: voteCounts } = useVoteCounts();
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    const initHashConnect = async () => {
-      const { getHashConnectInstance } = await import("../lib/hashConnect");
-      const hc = getHashConnectInstance();
-      await hc.init();
-
-      hc.pairingEvent.on(() => {
-        if (hc.connectedAccountIds?.length > 0) {
-          setAccountId(hc.connectedAccountIds[0].toString());
-        }
-      });
-
-      hc.disconnectionEvent.on(() => setAccountId(null));
-
-      if (hc.connectedAccountIds?.length > 0) {
-        setAccountId(hc.connectedAccountIds[0].toString());
-      }
-    };
-
-    initHashConnect();
-  }, []);
-
-  const connect = async () => {
-    const { getHashConnectInstance } = await import("../lib/hashConnect");
-    const hc = getHashConnectInstance();
-    await hc.openPairingModal();
-  };
-
-  const disconnect = async () => {
-    const { getHashConnectInstance } = await import("../lib/hashConnect");
-    const hc = getHashConnectInstance();
-    await hc.disconnect();
-  };
 
   const register = async () => {
     if (!accountId) return alert("Connect wallet first");
@@ -62,15 +31,12 @@ export default function Home() {
         accountId,
         timestamp: new Date().toISOString()
       });
-      const result = await submitMessageTransaction(
-        accountId, process.env.NEXT_PUBLIC_VOTERS_REGISTRY_TOPIC_ID!, message
-      );
-
-      if (result.status._code === 22) {
-        setStatus("✅ Registered as voter!");
-      } else {
-        setStatus(`⚠️ Status: ${result.status.toString()}`);
-      }
+      const transaction = await new TopicMessageSubmitTransaction()
+        .setTopicId(process.env.NEXT_PUBLIC_VOTERS_REGISTRY_TOPIC_ID!)
+        .setMessage(message)
+        .freezeWithSigner(signer as any);
+      const txResponse = await transaction.executeWithSigner(signer as any);
+      setStatus("✅ Registered as voter!");
     } catch (error) {
       console.error(error);
       setStatus(`❌ Registration failed: ${(error as Error).message}`);
@@ -110,15 +76,13 @@ export default function Home() {
       setProofResult(message);
       setStatus("📤 Submitting vote to Hedera...");
 
-      const result = await submitMessageTransaction(
-        accountId, process.env.NEXT_PUBLIC_VOTE_SUBMISSIONS_TOPIC_ID!, JSON.stringify(message)
-      );
-      if (result.status._code === 22) {
-        updateQueryCache();
-        setStatus("✅ Vote submitted!");
-      } else {
-        setStatus(`⚠️ Status: ${result.status.toString()}`);
-      }
+      const transaction = await new TopicMessageSubmitTransaction()
+        .setTopicId(process.env.NEXT_PUBLIC_VOTE_SUBMISSIONS_TOPIC_ID!)
+        .setMessage(JSON.stringify(message))
+        .freezeWithSigner(signer as any);
+      const txResponse = await transaction.executeWithSigner(signer as any);
+      updateQueryCache();
+      setStatus("✅ Vote submitted!");
     } catch (error) {
       console.error(error);
       setStatus(`❌ Vote failed: ${(error as Error).message}`);
@@ -170,9 +134,9 @@ export default function Home() {
       <div className="max-w-lg w-full bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-700">
         <h1 className="text-3xl font-bold mb-6 text-center">🗳️ ZK Voting</h1>
 
-        {!accountId ? (
+        {!isConnected ? (
           <button
-            onClick={connect}
+            onClick={async () => await connect()}
             className="w-full bg-green-600 py-3 rounded-xl mb-4 hover:bg-green-500 transition"
           >
             Connect Wallet
@@ -180,7 +144,7 @@ export default function Home() {
         ) : (
           <>
             <button
-              onClick={disconnect}
+              onClick={async () => await disconnect()}
               className="w-full bg-red-600 py-3 rounded-xl mb-4 hover:bg-red-500 transition"
             >
               Disconnect ({accountId})
@@ -195,7 +159,7 @@ export default function Home() {
           </>
         )}
 
-        {accountId && (
+        {isConnected && (
           <>
             <h2 className="text-xl font-semibold mb-3">Cast Your Vote</h2>
 

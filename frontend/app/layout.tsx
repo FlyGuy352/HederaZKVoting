@@ -18,11 +18,7 @@ export const metadata: Metadata = {
   description: "A secure, transparent, and privacy-focused voting dApp using Hedera Consensus Service and zero-knowledge proofs."
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body

@@ -9,10 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@buidlerlabs/hashgraph-react-wallets": "^2.5.0",
     "@hashgraph/sdk": "^2.76.0",
     "@tanstack/react-query": "^5.90.9",
     "circomlibjs": "^0.1.7",
-    "hashconnect": "^3.0.14",
     "merkletreejs": "^0.6.0",
     "next": "16.0.1",
     "react": "19.2.0",

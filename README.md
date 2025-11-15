@@ -24,8 +24,8 @@ This project combines **Hedera Consensus Service** with **zero-knowledge proofs*
 - 🦺 **Privacy by Design**  
   No centralized server stores votes or identities.
 
-- 🔌 **HashConnect Wallet Integration**  
-  Connect HashPack or Blade wallet seamlessly.
+- 🔌 **Hedera Wallet Connect Integration**  
+  Connect HashPack wallet seamlessly.
 
 - 📊 **Real-Time Vote Tally**  
   Votes update instantly using React Query and live topic messages.
@@ -42,6 +42,6 @@ This project combines **Hedera Consensus Service** with **zero-knowledge proofs*
 
 ### **Blockchain & Cryptography**
 - Hedera HCS
-- HashConnect
+- Hedera Wallet Connect
 - snarkjs (Groth16)
 - Merkle Trees
