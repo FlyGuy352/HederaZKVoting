@@ -20,6 +20,9 @@ export default function Home() {
 
   useEffect(() => {
     const initHashConnect = async () => {
+          if (typeof window === "undefined") {
+      return;
+    }
       const { getHashConnectInstance } = await import("../lib/hashConnect");
       const hc = getHashConnectInstance();
       await hc.init();
@@ -41,12 +44,18 @@ export default function Home() {
   }, []);
 
   const connect = async () => {
+        if (typeof window === "undefined") {
+      return;
+    }
     const { getHashConnectInstance } = await import("../lib/hashConnect");
     const hc = getHashConnectInstance();
     await hc.openPairingModal();
   };
 
   const disconnect = async () => {
+        if (typeof window === "undefined") {
+      return;
+    }
     const { getHashConnectInstance } = await import("../lib/hashConnect");
     const hc = getHashConnectInstance();
     await hc.disconnect();
@@ -144,6 +153,9 @@ export default function Home() {
   };
 
   const submitMessageTransaction = async (accountId: string, topicId: string, message: string) => {
+    if (typeof window === "undefined") {
+      return;
+    }
     const { getHashConnectInstance } = await import("../lib/hashConnect");
     const hc = getHashConnectInstance();
 
