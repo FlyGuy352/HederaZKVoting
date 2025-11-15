@@ -46,6 +46,9 @@ export default function Home() {
   };
 
   const disconnect = async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
     const { getHashConnectInstance } = await import("../lib/hashConnect");
     const hc = getHashConnectInstance();
     await hc.disconnect();
