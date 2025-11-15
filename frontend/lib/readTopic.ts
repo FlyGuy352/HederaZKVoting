@@ -7,14 +7,7 @@ export async function fetchTopicMessages<T>(topicId: string): Promise<T[]> {
     .map((m: any) => {
       try {
         const decoded = Buffer.from(m.message, "base64").toString("utf8");
-
-        // First parse (outer string)
-        const first = JSON.parse(decoded);
-
-        // Second parse (inner actual object)
-        const second = typeof first === "string" ? JSON.parse(first) : first;
-
-        return second as T;
+        return JSON.parse(decoded) as T;
       } catch {
         return null;
       }

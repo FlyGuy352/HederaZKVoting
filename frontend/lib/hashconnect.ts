@@ -1,35 +1,52 @@
-import { HashConnect } from "hashconnect";
-import { LedgerId, AccountId, TopicMessageSubmitTransaction } from "@hashgraph/sdk";
+"use client";
 
-const hc = new HashConnect(
+import type { HashConnect as HashConnectType } from "hashconnect";
+import type { TopicMessageSubmitTransaction } from "@hashgraph/sdk";
+
+let hc: HashConnectType | null = null;
+
+export const getHashConnectInstance = async (): Promise<HashConnectType> => {
+  if (hc) return hc;
+
+  if (typeof window === "undefined") {
+    throw new Error("HashConnect can only be initialized in the browser");
+  }
+
+  const { HashConnect } = await import("hashconnect");
+  const { LedgerId } = await import("@hashgraph/sdk");
+
+  hc = new HashConnect(
     LedgerId.fromString("testnet"),
     process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID!,
     {
-        name: "ZK Voting",
-        description: "ZK Voting - Hedera Hashgraph DApp",
-        icons: [`${window.location.origin}/favicon.ico`],
-        url: "http://localhost:3000",
+      name: "ZK Voting",
+      description: "ZK Voting - Hedera Hashgraph DApp",
+      icons: [`${window.location.origin}/favicon.ico`],
+      url: window.location.origin,
     },
     true
-);
+  );
 
-export const getHashConnectInstance = (): HashConnect => {
-    if (!hc) {
-        throw new Error("HashConnect not initialized. Make sure this is called on the client side.");
-    }
-    return hc;
+  return hc;
 };
 
-export const submitMessageTransaction = async (accountId: string, topicId: string, message: string) => {
-    const hc = getHashConnectInstance();
+export const submitMessageTransaction = async (
+  accountId: string,
+  topicId: string,
+  message: string
+) => {
+  const hcInstance = await getHashConnectInstance();
+  const { AccountId, TopicMessageSubmitTransaction } = await import("@hashgraph/sdk");
 
-    const tx = new TopicMessageSubmitTransaction()
-      .setTopicId(topicId)
-      .setMessage(JSON.stringify(message));
+  const tx: TopicMessageSubmitTransaction = new TopicMessageSubmitTransaction()
+    .setTopicId(topicId)
+    .setMessage(message);
 
-    const result = await hc.sendTransaction(
-      AccountId.fromString(accountId) as any,
-      tx as any
-    );
-    return result;
+  // cast to any because HashConnect expects its own SDK types
+  const result = await hcInstance.sendTransaction(
+    AccountId.fromString(accountId) as any,
+    tx as any
+  );
+
+  return result;
 };
