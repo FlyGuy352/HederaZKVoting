@@ -20,7 +20,7 @@ export default function Home() {
 
   useEffect(() => {
     const initHashConnect = async () => {
-      const { getHashConnectInstance } = await import("../lib/hashConnect");
+      const { getHashConnectInstance } = await import("../lib/hashConnect.ts");
       const hc = getHashConnectInstance();
       await hc.init();
 
@@ -41,13 +41,13 @@ export default function Home() {
   }, []);
 
   const connect = async () => {
-    const { getHashConnectInstance } = await import("../lib/hashConnect");
+    const { getHashConnectInstance } = await import("../lib/hashConnect.ts");
     const hc = getHashConnectInstance();
     await hc.openPairingModal();
   };
 
   const disconnect = async () => {
-    const { getHashConnectInstance } = await import("../lib/hashConnect");
+    const { getHashConnectInstance } = await import("../lib/hashConnect.ts");
     const hc = getHashConnectInstance();
     await hc.disconnect();
   };
