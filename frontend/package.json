@@ -21,9 +21,11 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/circomlibjs": "^0.1.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/snarkjs": "^0.7.9",
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
     "tailwindcss": "^4",

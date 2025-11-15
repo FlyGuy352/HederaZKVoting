@@ -6,8 +6,8 @@ import { getMerkleProof } from "@/actions/actions";
 import useVoteCounts from "@/hooks/useVoteCounts";
 import { useQueryClient } from "@tanstack/react-query";
 import VoteTally from "./voteTally";
-import { AccountId, TopicMessageSubmitTransaction } from "@hashgraph/sdk";
-//import { submitMessageTransaction } from "@/lib/hashConnect";
+import { submitMessageTransaction } from "@/lib/hashConnect";
+import { MerkleProof } from "@/types/types";
 
 export default function Home() {
   const [accountId, setAccountId] = useState<string | null>(null);
@@ -20,9 +20,6 @@ export default function Home() {
 
   useEffect(() => {
     const initHashConnect = async () => {
-          if (typeof window === "undefined") {
-      return;
-    }
       const { getHashConnectInstance } = await import("../lib/hashConnect");
       const hc = getHashConnectInstance();
       await hc.init();
@@ -44,18 +41,12 @@ export default function Home() {
   }, []);
 
   const connect = async () => {
-        if (typeof window === "undefined") {
-      return;
-    }
     const { getHashConnectInstance } = await import("../lib/hashConnect");
     const hc = getHashConnectInstance();
     await hc.openPairingModal();
   };
 
   const disconnect = async () => {
-        if (typeof window === "undefined") {
-      return;
-    }
     const { getHashConnectInstance } = await import("../lib/hashConnect");
     const hc = getHashConnectInstance();
     await hc.disconnect();
@@ -136,7 +127,7 @@ export default function Home() {
     }
   };
 
-  const buildCircuitInput = (merkleProof, voteChoice) => {
+  const buildCircuitInput = (merkleProof: MerkleProof, voteChoice: number) => {
     return {
       secret: merkleProof.secret,
       publicKey: merkleProof.publicKeyNumber.toString(),
@@ -151,24 +142,6 @@ export default function Home() {
       pollId: "1"
     };
   };
-
-  const submitMessageTransaction = async (accountId: string, topicId: string, message: string) => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const { getHashConnectInstance } = await import("../lib/hashConnect");
-    const hc = getHashConnectInstance();
-
-    const tx = new TopicMessageSubmitTransaction()
-      .setTopicId(process.env.NEXT_PUBLIC_VOTE_SUBMISSIONS_TOPIC_ID!)
-      .setMessage(JSON.stringify(message));
-
-    const result = await hc.sendTransaction(
-      AccountId.fromString(accountId),
-      tx
-    );
-    return result;
-};
 
   const updateQueryCache = () => {
     queryClient.setQueryData<{ yes: number; no: number; abstain: number }>(

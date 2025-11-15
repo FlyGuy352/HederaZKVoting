@@ -4,19 +4,23 @@ import crypto from "crypto";
 import { buildPoseidon } from "circomlibjs";
 import { formatIsoToLocalString } from "@/utils/datetime";
 import { fetchTopicMessages } from "@/lib/readTopic";
+import { VoterMessage, VoteMessage, MerkleProof } from "@/types/types";
 
 const SALT = "super-secret-server-salt";
 
-const deriveSecret = (accountId: string) =>
+type HashFn = (inputs: bigint[]) => bigint;
+
+const deriveSecret = (accountId: string): string =>
   crypto.createHash("sha256").update(`${accountId}${SALT}`).digest("hex");
 
-const accountIdToNumber = (accountId: string) => BigInt(accountId.split(".")[2]);
+const accountIdToNumber = (accountId: string): bigint =>
+  BigInt(accountId.split(".")[2] ?? 0);
 
-const buildPoseidonTree = (leaves, hashFn) => {
-  const layers = [leaves];
+const buildPoseidonTree = (leaves: bigint[], hashFn: HashFn): bigint[][] => {
+  const layers: bigint[][] = [leaves];
   while (layers[layers.length - 1].length > 1) {
     const prev = layers[layers.length - 1];
-    const next = [];
+    const next: bigint[] = [];
     for (let i = 0; i < prev.length; i += 2) {
       const left = prev[i];
       const right = prev[i + 1] ?? prev[i];
@@ -27,28 +31,33 @@ const buildPoseidonTree = (leaves, hashFn) => {
   return layers;
 };
 
-export async function getMerkleProof(accountId: string) {
+export async function getMerkleProof(accountId: string): Promise<MerkleProof | null> {
   const voterTopic = process.env.NEXT_PUBLIC_VOTERS_REGISTRY_TOPIC_ID!;
   const voteTopic = process.env.NEXT_PUBLIC_VOTE_SUBMISSIONS_TOPIC_ID!;
 
-  const voterMessages = await fetchTopicMessages(voterTopic);
+  const voterMessages = (await fetchTopicMessages(voterTopic)) as VoterMessage[];
   const voters = voterMessages.map(v => v.accountId);
   if (voters.length > 128) {
     throw new Error("Maximum number of voters have already registered");
   }
-  const extendedVoters = Array.from({ length: 128 }, (_, i) => voters[i] ?? "0.0.0");
+
+  const extendedVoters = Array.from(
+    { length: 128 },
+    (_, i) => voters[i] ?? "0.0.0"
+  );
+
   const index = extendedVoters.indexOf(accountId);
   if (index === -1) return null;
 
   const poseidon = await buildPoseidon();
   const F = poseidon.F;
-  const hashFn = inputs => F.toObject(poseidon(inputs));
+  const hashFn: HashFn = inputs => F.toObject(poseidon(inputs));
 
-  const secrets = extendedVoters.map(v =>
-    BigInt(`0x${deriveSecret(v).slice(0, 31)}`)
+  const secrets = extendedVoters.map(
+    v => BigInt(`0x${deriveSecret(v).slice(0, 31)}`)
   );
 
-  const publicKeys = extendedVoters.map(v => accountIdToNumber(v));
+  const publicKeys = extendedVoters.map(accountIdToNumber);
 
   const leaves = secrets.map((s, i) => hashFn([s, publicKeys[i]]));
 
@@ -56,8 +65,9 @@ export async function getMerkleProof(accountId: string) {
   const root = tree[tree.length - 1][0];
   const leaf = leaves[index];
 
-  const pathElements = [];
-  const pathIndices = [];
+  const pathElements: string[] = [];
+  const pathIndices: number[] = [];
+
   let node = index;
 
   for (let lvl = 0; lvl < tree.length - 1; lvl++) {
@@ -69,7 +79,7 @@ export async function getMerkleProof(accountId: string) {
     node = Math.floor(node / 2);
   }
 
-  while (pathElements.length < 3) {
+  while (pathElements.length < 7) {
     pathElements.push("0x0");
     pathIndices.push(0);
   }
@@ -77,8 +87,8 @@ export async function getMerkleProof(accountId: string) {
   const pollId = BigInt(1);
   const nullifier = hashFn([secrets[index], pollId]);
 
-  const votes = await fetchTopicMessages(voteTopic);
-  const match = votes.find(m => m.nullifier === nullifier.toString());
+  const votes = (await fetchTopicMessages(voteTopic)) as VoteMessage[];
+  const match = votes.find(v => v.nullifier === nullifier.toString());
   if (match) {
     throw new Error(
       `You already voted on ${formatIsoToLocalString(match.timestamp)}`
@@ -93,4 +103,4 @@ export async function getMerkleProof(accountId: string) {
     publicKeyNumber: publicKeys[index],
     secret: secrets[index]
   };
-}
+};

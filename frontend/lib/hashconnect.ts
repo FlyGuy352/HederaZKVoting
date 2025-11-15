@@ -1,6 +1,5 @@
 import { HashConnect } from "hashconnect";
-//import { LedgerId, AccountId, TopicMessageSubmitTransaction } from "@hashgraph/sdk";
-import { LedgerId } from "@hashgraph/sdk";
+import { LedgerId, AccountId, TopicMessageSubmitTransaction } from "@hashgraph/sdk";
 
 const hc = new HashConnect(
     LedgerId.fromString("testnet"),
@@ -21,16 +20,16 @@ export const getHashConnectInstance = (): HashConnect => {
     return hc;
 };
 
-/*export const submitMessageTransaction = async (accountId: string, topicId: string, message: string) => {
+export const submitMessageTransaction = async (accountId: string, topicId: string, message: string) => {
     const hc = getHashConnectInstance();
 
     const tx = new TopicMessageSubmitTransaction()
-      .setTopicId(process.env.NEXT_PUBLIC_VOTE_SUBMISSIONS_TOPIC_ID!)
+      .setTopicId(topicId)
       .setMessage(JSON.stringify(message));
 
     const result = await hc.sendTransaction(
-      AccountId.fromString(accountId),
-      tx
+      AccountId.fromString(accountId) as any,
+      tx as any
     );
     return result;
-};*/
+};
