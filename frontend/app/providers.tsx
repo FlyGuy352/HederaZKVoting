@@ -14,8 +14,8 @@ const queryClient = new QueryClient();
 const metadata = {
   name: "ZK Voting",
   description: "ZK Voting - Hedera Hashgraph DApp",
-  icons: [`${window.location.origin}/favicon.ico`],
-  url: "http://localhost:3000"
+  icons: typeof window !== "undefined" ? [`${window.location.origin}/favicon.ico`] : [],
+  url: typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"
 };
 
 export default function Providers({ children }: { children: ReactNode }) {
