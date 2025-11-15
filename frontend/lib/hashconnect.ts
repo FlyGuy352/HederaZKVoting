@@ -1,11 +1,11 @@
 import { LedgerId, AccountId, TopicMessageSubmitTransaction } from "@hashgraph/sdk";
 
-let hc;
+let hc; // Statically importing HashConnect causes a build error
 if (typeof window !== "undefined") {
     const { HashConnect } = await import("hashconnect");
     hc = new HashConnect(
         LedgerId.fromString("testnet"),
-        process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID!, // projectId
+        process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID!,
         {
             name: "ZK Voting",
             description: "ZK Voting - Hedera Hashgraph DApp",
