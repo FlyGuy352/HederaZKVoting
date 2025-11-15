@@ -1,5 +1,6 @@
 import { HashConnect } from "hashconnect";
-import { LedgerId, AccountId, TopicMessageSubmitTransaction } from "@hashgraph/sdk";
+//import { LedgerId, AccountId, TopicMessageSubmitTransaction } from "@hashgraph/sdk";
+import { LedgerId } from "@hashgraph/sdk";
 
 const hc = new HashConnect(
     LedgerId.fromString("testnet"),
@@ -20,7 +21,7 @@ export const getHashConnectInstance = (): HashConnect => {
     return hc;
 };
 
-export const submitMessageTransaction = async (accountId: string, topicId: string, message: string) => {
+/*export const submitMessageTransaction = async (accountId: string, topicId: string, message: string) => {
     const hc = getHashConnectInstance();
 
     const tx = new TopicMessageSubmitTransaction()
@@ -32,4 +33,4 @@ export const submitMessageTransaction = async (accountId: string, topicId: strin
       tx
     );
     return result;
-};
+};*/
