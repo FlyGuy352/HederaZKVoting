@@ -16,3 +16,13 @@ export type MerkleProof = {
     publicKeyNumber: bigint;
     secret: bigint;
 };
+
+export type MerkleProofResult =
+    | {
+        success: true;
+        proof: MerkleProof;
+    }
+    | {
+        success: false;
+        errorMessage: string;
+    };

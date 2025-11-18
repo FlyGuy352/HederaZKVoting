@@ -4,7 +4,7 @@ import crypto from "crypto";
 import { buildPoseidon } from "circomlibjs";
 import { formatIsoToLocalString } from "@/utils/datetime";
 import { fetchTopicMessages } from "@/lib/readTopic";
-import { VoterMessage, VoteMessage, MerkleProof } from "@/types/types";
+import { VoterMessage, VoteMessage, MerkleProof, MerkleProofResult } from "@/types/types";
 
 const SALT = "super-secret-server-salt";
 
@@ -31,14 +31,14 @@ const buildPoseidonTree = (leaves: bigint[], hashFn: HashFn): bigint[][] => {
   return layers;
 };
 
-export async function getMerkleProof(accountId: string): Promise<MerkleProof | null> {
+export async function getMerkleProof(accountId: string): Promise<MerkleProofResult> {
   const voterTopic = process.env.NEXT_PUBLIC_VOTERS_REGISTRY_TOPIC_ID!;
   const voteTopic = process.env.NEXT_PUBLIC_VOTE_SUBMISSIONS_TOPIC_ID!;
 
   const voterMessages = (await fetchTopicMessages(voterTopic)) as VoterMessage[];
   const voters = voterMessages.map(v => v.accountId);
   if (voters.length > 128) {
-    throw new Error("Maximum number of voters have already registered");
+    return { success: false, errorMessage: "Maximum number of voters have already registered" };
   }
 
   const extendedVoters = Array.from(
@@ -47,7 +47,7 @@ export async function getMerkleProof(accountId: string): Promise<MerkleProof | n
   );
 
   const index = extendedVoters.indexOf(accountId);
-  if (index === -1) return null;
+  if (index === -1) return { success: false, errorMessage: "You are not registered as a voter" };
 
   const poseidon = await buildPoseidon();
   const F = poseidon.F;
@@ -90,17 +90,18 @@ export async function getMerkleProof(accountId: string): Promise<MerkleProof | n
   const votes = (await fetchTopicMessages(voteTopic)) as VoteMessage[];
   const match = votes.find(v => v.nullifier === nullifier.toString());
   if (match) {
-    throw new Error(
-      `You already voted on ${formatIsoToLocalString(match.timestamp)}`
-    );
+    return { success: false, errorMessage: `You already voted on ${formatIsoToLocalString(match.timestamp)}` };
   }
 
   return {
-    root: `0x${root.toString(16)}`,
-    pathElements,
-    pathIndices,
-    leaf: `0x${leaf.toString(16)}`,
-    publicKeyNumber: publicKeys[index],
-    secret: secrets[index]
+    success: true,
+    proof: {
+      root: `0x${root.toString(16)}`,
+      pathElements,
+      pathIndices,
+      leaf: `0x${leaf.toString(16)}`,
+      publicKeyNumber: publicKeys[index],
+      secret: secrets[index]
+    }
   };
 };

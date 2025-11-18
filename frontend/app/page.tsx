@@ -9,7 +9,7 @@ import useIsRegisteredVoter from "@/hooks/useIsRegisteredVoter";
 import useVoteCounts from "@/hooks/useVoteCounts";
 import { useQueryClient } from "@tanstack/react-query";
 import VoteTally from "./voteTally";
-import { MerkleProof } from "@/types/types";
+import { MerkleProofResult } from "@/types/types";
 import { HashpackConnector } from "@buidlerlabs/hashgraph-react-wallets/connectors";
 
 export default function Home() {
@@ -54,12 +54,14 @@ export default function Home() {
       setIsProving(true);
       setStatus("🧮 Fetching Merkle proof...");
 
-      const merkleProof = await getMerkleProof(accountId);
-      if (!merkleProof) throw new Error("You are not registered as a voter");
+      const merkleProofResult = await getMerkleProof(accountId);
+      if (!merkleProofResult.success) {
+        return setStatus(`❌ Vote failed: ${merkleProofResult.errorMessage}`);
+      }
 
       setStatus("🧮 Generating ZK proof...");
 
-      const input = buildCircuitInput(merkleProof, voteChoice);
+      const input = buildCircuitInput(merkleProofResult.proof, voteChoice);
 
       const { proof, publicSignals } = await groth16.fullProve(
         input,
