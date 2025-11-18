@@ -4,7 +4,7 @@ import crypto from "crypto";
 import { buildPoseidon } from "circomlibjs";
 import { formatIsoToLocalString } from "@/utils/datetime";
 import { fetchTopicMessages } from "@/lib/readTopic";
-import { VoterMessage, VoteMessage, MerkleProof, MerkleProofResult } from "@/types/types";
+import { VoterMessage, VoteMessage, MerkleProofResult } from "@/types/types";
 
 const SALT = "super-secret-server-salt";
 

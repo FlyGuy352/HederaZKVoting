@@ -9,7 +9,7 @@ import useIsRegisteredVoter from "@/hooks/useIsRegisteredVoter";
 import useVoteCounts from "@/hooks/useVoteCounts";
 import { useQueryClient } from "@tanstack/react-query";
 import VoteTally from "./voteTally";
-import { MerkleProofResult } from "@/types/types";
+import { MerkleProof } from "@/types/types";
 import { HashpackConnector } from "@buidlerlabs/hashgraph-react-wallets/connectors";
 
 export default function Home() {
@@ -37,7 +37,7 @@ export default function Home() {
         .setTopicId(process.env.NEXT_PUBLIC_VOTERS_REGISTRY_TOPIC_ID!)
         .setMessage(message)
         .freezeWithSigner(signer as any);
-      const txResponse = await transaction.executeWithSigner(signer as any);
+      await transaction.executeWithSigner(signer as any);
       updateIsRegisteredVoterQueryCache();
       setStatus("✅ Registered as voter!");
     } catch (error) {
@@ -85,7 +85,7 @@ export default function Home() {
         .setTopicId(process.env.NEXT_PUBLIC_VOTE_SUBMISSIONS_TOPIC_ID!)
         .setMessage(JSON.stringify(message))
         .freezeWithSigner(signer as any);
-      const txResponse = await transaction.executeWithSigner(signer as any);
+      await transaction.executeWithSigner(signer as any);
       updateVotesQueryCache();
       setStatus("✅ Vote submitted!");
     } catch (error) {
