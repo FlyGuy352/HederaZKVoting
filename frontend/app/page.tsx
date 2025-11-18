@@ -38,6 +38,7 @@ export default function Home() {
         .setMessage(message)
         .freezeWithSigner(signer as any);
       const txResponse = await transaction.executeWithSigner(signer as any);
+      updateIsRegisteredVoterQueryCache();
       setStatus("✅ Registered as voter!");
     } catch (error) {
       console.error(error);
@@ -83,7 +84,7 @@ export default function Home() {
         .setMessage(JSON.stringify(message))
         .freezeWithSigner(signer as any);
       const txResponse = await transaction.executeWithSigner(signer as any);
-      updateQueryCache();
+      updateVotesQueryCache();
       setStatus("✅ Vote submitted!");
     } catch (error) {
       console.error(error);
@@ -109,7 +110,16 @@ export default function Home() {
     };
   };
 
-  const updateQueryCache = () => {
+  const updateIsRegisteredVoterQueryCache = () => {
+    queryClient.setQueryData<boolean>(
+      ["isRegisteredVoter", accountId],
+      _ => {
+        return true;
+      }
+    );
+  };
+
+  const updateVotesQueryCache = () => {
     queryClient.setQueryData<{ yes: number; no: number; abstain: number }>(
       ["voteCounts"],
       old => {
