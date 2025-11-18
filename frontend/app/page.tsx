@@ -5,6 +5,7 @@ import { useWallet, useAccountId } from "@buidlerlabs/hashgraph-react-wallets";
 import { TopicMessageSubmitTransaction } from "@hashgraph/sdk";
 import { groth16 } from "snarkjs";
 import { getMerkleProof } from "@/actions/actions";
+import useIsRegisteredVoter from "@/hooks/useIsRegisteredVoter";
 import useVoteCounts from "@/hooks/useVoteCounts";
 import { useQueryClient } from "@tanstack/react-query";
 import VoteTally from "./voteTally";
@@ -18,6 +19,7 @@ export default function Home() {
   const [isProving, setIsProving] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [proofResult, setProofResult] = useState<any>(null);
+  const { data: isRegisteredVoter } = useIsRegisteredVoter(accountId);
   const { data: voteCounts } = useVoteCounts();
   const queryClient = useQueryClient();
 
@@ -150,12 +152,12 @@ export default function Home() {
               Disconnect ({accountId})
             </button>
 
-            <button
+            {!isRegisteredVoter && <button
               onClick={register}
               className="w-full bg-purple-600 py-3 rounded-xl mb-4 hover:bg-purple-500 transition"
             >
               Register As Voter
-            </button>
+            </button>}
           </>
         )}
 
