@@ -1,5 +1,5 @@
 # 🚀 Hedera ZK Voting  
-A privacy-preserving, tamper-proof, and verifiable voting system built on **Hedera Hashgraph** using **zero-knowledge proofs (ZK)**.
+A privacy-preserving, tamper-proof, and verifiable voting system built on **Hedera Hashgraph** using **zero-knowledge proofs (ZKP)**.
 
 This project demonstrates how on-chain consensus and off-chain cryptography can create a secure voting mechanism where **votes remain private**, yet **results remain auditable and trustless**.
 
