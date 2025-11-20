@@ -6,12 +6,10 @@ import { formatIsoToLocalString } from "@/utils/datetime";
 import { fetchTopicMessages } from "@/lib/readTopic";
 import { VoterMessage, VoteMessage, MerkleProofResult } from "@/types/types";
 
-const SALT = "super-secret-server-salt";
-
 type HashFn = (inputs: bigint[]) => bigint;
 
 const deriveSecret = (accountId: string): string =>
-  crypto.createHash("sha256").update(`${accountId}${SALT}`).digest("hex");
+  crypto.createHash("sha256").update(`${accountId}${process.env.SALT}`).digest("hex");
 
 const accountIdToNumber = (accountId: string): bigint =>
   BigInt(accountId.split(".")[2] ?? 0);
